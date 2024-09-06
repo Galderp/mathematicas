@@ -85,58 +85,62 @@
 	// Register error events for each video
 	[video1, video2, video3, video4, video5, video6, video7, video8].forEach(addErrorEvent);
 
-	// Function to update video sources
-	function updateVideoSources(yearMonthDate, shortMonth, year, formattedDay) {
-		const videos = [
-			{ video: video1, hourMinute: '1058' },
-			{ video: video2, hourMinute: '1059' },
-			{ video: video3, hourMinute: '1100' },
-			{ video: video4, hourMinute: '1101' },
-			{ video: video5, hourMinute: '1102' },
-			{ video: video6, hourMinute: '1103' },
-			{ video: video7, hourMinute: '1104' }
-		];
+	// Function to get the correct month abbreviation
+    function getShortMonth(date) {
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                            "Jul", "Aug", "Sept", "Oct", "Nov", "Dec"];
+        return monthNames[date.getMonth()];
+    }
 
-		videos.forEach(({ video, hourMinute }) => {
-			const src = `https://traderfl.s3.amazonaws.com/${yearMonthDate}${hourMinute}MarketInsights.mp4`;
-			video.src = src;
-			video.style.display = 'block'; // Make sure the video is visible
-		});
+    // Update the updateVideoSources function
+    function updateVideoSources(yearMonthDate, shortMonth, year, formattedDay) {
+        const videos = [
+            { video: video1, hourMinute: '1058' },
+            { video: video2, hourMinute: '1059' },
+            { video: video3, hourMinute: '1100' },
+            { video: video4, hourMinute: '1101' },
+            { video: video5, hourMinute: '1102' },
+            { video: video6, hourMinute: '1103' },
+            { video: video7, hourMinute: '1104' }
+        ];
 
-		const src8 = `https://traderfl.s3.amazonaws.com/EODReview${shortMonth}${formattedDay}${year}.mp4`;
-		video8.src = src8;
-		video8.style.display = 'block';
-	}
+        videos.forEach(({ video, hourMinute }) => {
+            const src = `https://traderfl.s3.amazonaws.com/${yearMonthDate}${hourMinute}MarketInsights.mp4`;
+            video.src = src;
+            video.style.display = 'block';
+        });
 
-	// Listen for change event on the date picker
-	datePicker.addEventListener('change', () => {
-		// Get the selected date
-		const selectedDate = datePicker.value;
-		const date = new Date(selectedDate);
+        const src8 = `https://traderfl.s3.amazonaws.com/EODReview${shortMonth}${formattedDay}${year}.mp4`;
+        video8.src = src8;
+        video8.style.display = 'block';
+    }
 
-		// Update date variables using the selected date
-		const year = date.getFullYear();
-		const month = date.getMonth() < 9 ? '0' + (date.getMonth() + 1) : date.getMonth() + 1;
-		const day = date.getDate() < 10 ? '0' + (date.getDate()) : date.getDate();
-		const shortMonth = date.toLocaleString('en-us', { month: 'short' });
-		const yearMonthDate = `${year}${month}${day}`;
+    // Update the event listener for the date picker
+    datePicker.addEventListener('change', () => {
+        const selectedDate = datePicker.value;
+        const date = new Date(selectedDate);
 
-		// Format day without leading zero si applicable
-		const formattedDay = day < 10 ? day.substring(1) : day;
+        const year = date.getFullYear();
+        const month = date.getMonth() < 9 ? '0' + (date.getMonth() + 1) : date.getMonth() + 1;
+        const day = date.getDate() < 10 ? '0' + (date.getDate()) : date.getDate();
+        const shortMonth = getShortMonth(date);
+        const yearMonthDate = `${year}${month}${day}`;
 
-		updateVideoSources(yearMonthDate, shortMonth, year, formattedDay);
-	});
+        const formattedDay = day < 10 ? day.substring(1) : day;
 
-	// Initialize videos with current date
-	const initialDate = new Date();
-	const initialYear = initialDate.getFullYear();
-	const initialMonth = initialDate.getMonth() < 9 ? '0' + (initialDate.getMonth() + 1) : initialDate.getMonth() + 1;
-	const initialDay = initialDate.getDate() < 10 ? '0' + (initialDate.getDate()) : initialDate.getDate();
-	const initialShortMonth = initialDate.toLocaleString('en-us', { month: 'short' });
-	const initialYearMonthDate = `${initialYear}${initialMonth}${initialDay}`;
-	const formattedInitialDay = initialDay < 10 ? initialDay.substring(1) : initialDay;
+        updateVideoSources(yearMonthDate, shortMonth, year, formattedDay);
+    });
 
-	updateVideoSources(initialYearMonthDate, initialShortMonth, initialYear, formattedInitialDay);
+    // Initialize videos with current date
+    const initialDate = new Date();
+    const initialYear = initialDate.getFullYear();
+    const initialMonth = initialDate.getMonth() < 9 ? '0' + (initialDate.getMonth() + 1) : initialDate.getMonth() + 1;
+    const initialDay = initialDate.getDate() < 10 ? '0' + (initialDate.getDate()) : initialDate.getDate();
+    const initialShortMonth = getShortMonth(initialDate);
+    const initialYearMonthDate = `${initialYear}${initialMonth}${initialDay}`;
+    const formattedInitialDay = initialDay < 10 ? initialDay.substring(1) : initialDay;
+
+    updateVideoSources(initialYearMonthDate, initialShortMonth, initialYear, formattedInitialDay);
 
 </script>
 
