@@ -1,148 +1,573 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
-	<style>
-		body {
-			background-color: #f8f9fa;
-		}
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mercado & Videos — Panel diario</title>
+  <!-- Opcional: habilitar Firebase si quieres multi‑dispositivo real -->
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css" />
+  <style>
+    :root {
+      --radius: 16px; --gap: 14px; --card-w: min(1100px, 96vw);
+      /* Light theme (default) */
+      --fg: #0b1220; /* high-contrast text */
+      --muted: #334155; /* slate-600 */
+      --bg: #f3f4f6; /* gray-100 */
+      --card: #ffffff;
+      --border: #cbd5e1; /* slate-300 */
+      --track: #e5e7eb; /* gray-200 */
+      --tick: #94a3b8; /* slate-400 */
+      --accent: #0ea5e9; /* sky-500 */
+      --fill1: #0ea5e9; --fill2: #0284c7; --fill3: #0369a1; /* sky tones */
 
-		.container {
-			margin-top: 30px;
-			background-color: #ffffff;
-			border-radius: 10px;
-			box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
-			padding: 20px;
-		}
+      /* Inputs */
+      --input-bg: #ffffff;
+      --input-fg: #0b1220;
+      --input-border: #94a3b8; /* slate-400 */
+      --input-placeholder: #475569; /* slate-700 */
+      --input-readonly-bg: #eef2f7;
+      --good: #16a34a; --bad: #dc2626; --info: #1d4ed8;
+    }
 
-		#date-picker {
-			width: 100%;
-			padding: 8px;
-			font-size: 1.1rem;
-			margin-bottom: 20px;
-		}
+    [hidden]{display:none!important;}
+    [hidden]{display:none!important;}
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell,
+      Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      display: grid; place-items: center; background: var(--bg); color: var(--fg);
+    }
 
-		video {
-			width: 100%;
-			height: auto;
-			border-radius: 10px;
-			box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-		}
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --fg: #e5e7eb; --muted: #cbd5e1; --bg: #0b1020; --card: #0d1327; --border: #1f2a44;
+        --track: #0b1222; --tick: #334155; --accent: #7dd3fc; --fill1: #22d3ee; --fill2: #06b6d4; --fill3: #0891b2;
+        --input-bg: #0f172a; --input-fg: #f8fafc; --input-border: #334155; --input-placeholder: #cbd5e1; --input-readonly-bg: #111827;
+      }
+      body { background: radial-gradient(1000px 600px at 20% 0%, #0b1020, #030712); }
+      .card { box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+    }
 
-		h2 {
-			margin-bottom: 20px;
-		}
+    /* Auth overlay */
+    .auth-overlay { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(2,6,23,.6); backdrop-filter: blur(2px); z-index: 50; }
+    .auth-card { width: min(420px, 92vw); background: var(--card); color: var(--fg); border: 1px solid var(--border); border-radius: 16px; padding: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.3); }
+    .auth-card h2 { margin: 0 0 8px 0; font-size: 18px; font-weight: 800; }
+    .auth-row { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 10px; }
+    .auth-row.two { grid-template-columns: 1fr 1fr; }
+    .auth-input { width: 100%; padding: 10px; border: 1px solid var(--input-border); border-radius: 10px; background: var(--input-bg); color: var(--input-fg); font: inherit; }
+    .auth-btn { appearance: none; border: 1px solid var(--border); padding: 10px 14px; border-radius: 10px; font-weight: 800; cursor: pointer; background: var(--accent); color: #fff; width: 100%; }
+    .auth-msg { font-size: 12px; color: var(--muted); min-height: 18px; }
 
-	</style>
+    .card { width: var(--card-w); border: 1px solid var(--border); border-radius: var(--radius); background: var(--card);
+      padding: 22px; box-shadow: 0 10px 30px rgba(2, 6, 23, .08); }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .tab-btn { border: 1px solid var(--border); background: var(--card); color: var(--fg); padding: 8px 12px; border-radius: 10px; font-weight: 800; cursor: pointer; }
+    .tab-btn[aria-selected="true"], .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .view { display: none; }
+    .view.active { display: block; }
+
+    header { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+    h1, h2 { margin: 0; }
+    h1 { font-size: clamp(18px, 2.2vw, 22px); font-weight: 800; letter-spacing: .2px; }
+    .meta { font-size: 14px; color: var(--muted); font-weight: 600; }
+
+    .track { position: relative; margin-top: 16px; height: 30px; border-radius: calc(var(--radius) - 8px);
+      background: var(--track); border: 1px solid var(--border); overflow: hidden; }
+    .fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--fill1), var(--fill2) 60%, var(--fill3)); transition: width .6s ease; }
+    .cursor { position: absolute; top: -6px; transform: translateX(-50%); width: 2px; height: 42px; background: var(--accent); box-shadow: 0 0 8px rgba(14,165,233,.9), 0 0 0 2px rgba(255,255,255,.9) inset; }
+    .tick-wrap { position: absolute; inset: 0; pointer-events: none; }
+    .tick { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--tick); opacity: 1; }
+    .tick-label { position: absolute; top: 36px; transform: translateX(-50%); font-size: 13px; color: var(--fg); font-weight: 600; text-shadow: 0 1px 0 rgba(255,255,255,.35); white-space: nowrap; }
+
+    .stats { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: var(--gap); margin-top: 16px; }
+    .stat { border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+    .stat .label { font-size: 12px; color: var(--muted); font-weight: 700; letter-spacing: .2px; text-transform: uppercase; }
+    .stat .value { font-size: 20px; font-variant-numeric: tabular-nums; margin-top: 4px; font-weight: 700; }
+
+    .badge { padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: .2px; }
+    .open { background: #16a34a; color: #ffffff; }
+    .closed { background: #dc2626; color: #ffffff; }
+    .pre { background: #1d4ed8; color: #ffffff; }
+
+    /* Plan de hoy */
+    .plan { margin-top: 18px; border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+    .plan-label { display: block; font-weight: 800; font-size: 14px; margin-bottom: 8px; color: var(--fg); }
+    .row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: start; }
+    textarea.input { width: 100%; min-height: 96px; resize: vertical; padding: 12px; border: 1px solid var(--input-border); border-radius: 10px; font: inherit; color: var(--input-fg); background: var(--input-bg); font-size: 16px; line-height: 1.55; font-weight: 600; letter-spacing: .1px; caret-color: currentColor; outline: none; }
+    textarea.input::placeholder { color: var(--input-placeholder); opacity: 1; font-weight: 600; }
+    textarea.input:focus { box-shadow: 0 0 0 3px rgba(14,165,233,.35); border-color: var(--accent); }
+    textarea.input.readonly, textarea.input[readonly] { background: var(--input-readonly-bg); color: var(--input-fg); border-color: var(--input-border); opacity: 1; cursor: not-allowed; }
+    .btn { appearance: none; border: 1px solid var(--border); padding: 10px 14px; border-radius: 10px; font-weight: 800; cursor: pointer; background: var(--accent); color: #fff; }
+    .btn:disabled { opacity: .7; cursor: not-allowed; }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+    /* EOD (Notas del día) */
+    .eod { margin-top: 18px; border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+    .eod-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .eod-label { font-weight: 800; font-size: 14px; }
+    .switch-label { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; }
+    .switch-wrap { position: relative; width: 48px; height: 28px; }
+    .switch-input { position: absolute; inset: 0; opacity: 0; }
+    .switch { position: absolute; inset: 0; border-radius: 999px; background: #e5e7eb; border: 1px solid var(--border); transition: background .2s ease; }
+    .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 1px solid var(--border); transition: transform .2s ease; }
+    .switch-input:checked + .switch { background: var(--good); }
+    .switch-input:checked + .switch::after { transform: translateX(20px); }
+    .switch-input:disabled + .switch { opacity: .6; }
+
+    /* Videos */
+    .videos-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .videos-title { font-size: 18px; font-weight: 800; margin: 0; }
+    #date-picker { width: 240px; padding: 10px; border: 1px solid var(--input-border); border-radius: 10px; font: inherit; background: var(--input-bg); color: var(--input-fg); }
+    #date-picker:focus { outline: none; box-shadow: 0 0 0 3px rgba(14,165,233,.35); border-color: var(--accent); }
+
+    .videos-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 14px; }
+    video { width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+
+    /* Historial */
+    .hist-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .hist-title { font-size: 18px; font-weight: 800; margin: 0; }
+    .history-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .table th, .table td { border: 1px solid var(--border); padding: 8px; text-align: left; vertical-align: top; }
+    .table th { background: #f1f5f9; font-weight: 800; }
+    @media (prefers-color-scheme: dark) { .table th { background: #0b1222; } }
+    .nowrap { white-space: nowrap; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 800; }
+    .pill-yes { background: #dcfce7; color: #166534; }
+    .pill-no { background: #fee2e2; color: #991b1b; }
+
+    footer { margin-top: 10px; font-size: 12px; color: var(--muted); }
+  </style>
 </head>
 <body>
-<div class="container">
-	<h2>Videos de Market Insights</h2>
-	<input type="text" id="date-picker" placeholder="Selecciona una fecha">
-	<video controls id="v1" name="media"><source type="video/mp4"></video>
-	<video controls id="v2" name="media"><source type="video/mp4"></video>
-	<video controls id="v3" name="media"><source type="video/mp4"></video>
-	<video controls id="v4" name="media"><source type="video/mp4"></video>
-	<video controls id="v5" name="media"><source type="video/mp4"></video>
-	<video controls id="v6" name="media"><source type="video/mp4"></video>
-	<video controls id="v7" name="media"><source type="video/mp4"></video>
-	
-	<h2>Revisión del día</h2>
-	<video controls id="v8" name="media"><source type="video/mp4"></video>
-</div>
+  <!-- Puerta de acceso (elige modo en las constantes JS) -->
+  <div id="authGate" class="auth-overlay" hidden>
+    <div class="auth-card" role="dialog" aria-labelledby="authTitle" aria-live="polite">
+      <h2 id="authTitle">Acceso</h2>
+      <div id="authFirebase" hidden>
+        <div class="auth-row">
+          <input id="authEmail" class="auth-input" type="email" placeholder="Email" autocomplete="username" />
+          <input id="authPassword" class="auth-input" type="password" placeholder="Contraseña" autocomplete="current-password" />
+        </div>
+        <div class="auth-row two">
+          <button id="btnSignIn" class="auth-btn" type="button">Entrar</button>
+          <button id="btnSignUp" class="auth-btn" type="button">Crear cuenta</button>
+        </div>
+      </div>
+      <div id="authPasscode" hidden>
+        <div class="auth-row">
+          <input id="authCode" class="auth-input" type="password" placeholder="Contraseña" />
+        </div>
+        <div class="auth-row">
+          <button id="btnCodeEnter" class="auth-btn" type="button">Entrar</button>
+        </div>
+      </div>
+      <div id="authMsg" class="auth-msg"></div>
+    </div>
+  </div>
 
-<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.bundle.min.js" integrity="sha384-zOggIbgz4dCAvqcC5DQEvYf8upGkFNz6KfR0xTsjua5PAzHqEkZX5VVoS5wwj8g" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
-<script type="text/javascript">
-	// Initialize Flatpickr date picker
-	flatpickr("#date-picker", {
-		dateFormat: "Y-m-d",
-		defaultDate: new Date().toISOString().substring(0, 10)
-	});
+  <main id="appRoot" class="card" role="region" aria-label="Panel diario" style="display:none">
+    <nav class="tabs" role="tablist">
+      <button id="tabBtnMarket" class="tab-btn active" role="tab" aria-selected="true" aria-controls="view-market">Mercado</button>
+      <button id="tabBtnVideos" class="tab-btn" role="tab" aria-selected="false" aria-controls="view-videos">Videos</button>
+      <button id="tabBtnHistory" class="tab-btn" role="tab" aria-selected="false" aria-controls="view-history">Histórico</button>
+    </nav>
 
-	// Get video elements by id
-	const video1 = document.getElementById('v1');
-	const video2 = document.getElementById('v2');
-	const video3 = document.getElementById('v3');
-	const video4 = document.getElementById('v4');
-	const video5 = document.getElementById('v5');
-	const video6 = document.getElementById('v6');
-	const video7 = document.getElementById('v7');
-	const video8 = document.getElementById('v8');
-	const datePicker = document.getElementById('date-picker');
+    <!-- Vista MERCADO -->
+    <section id="view-market" class="view active" role="tabpanel" aria-labelledby="tabBtnMarket">
+      <header>
+        <h1>Progreso del mercado hoy</h1>
+        <div class="meta" id="meta">Zona horaria: —</div>
+      </header>
 
-	// Function to hide videos on error
-	function addErrorEvent(video) {
-		video.addEventListener('error', () => {
-			if (video.error.code === video.error.MEDIA_ERR_SRC_NOT_SUPPORTED) {
-				video.style.display = 'none';
-			}
-		});
-	}
+      <div class="track" aria-live="polite" aria-describedby="sr-desc">
+        <div class="fill" id="fill" aria-hidden="true"></div>
+        <div class="cursor" id="cursor" aria-hidden="true"></div>
+        <div class="tick-wrap" id="ticks" aria-hidden="true"></div>
+      </div>
+      <p id="sr-desc" class="visualmente-oculto" style="position:absolute;left:-9999px;">Barra que muestra el % de sesión bursátil transcurrida.</p>
 
-	// Register error events for each video
-	[video1, video2, video3, video4, video5, video6, video7, video8].forEach(addErrorEvent);
+      <section class="stats">
+        <div class="stat">
+          <div class="label">Estado</div>
+          <div class="value"><span id="stateBadge" class="badge">—</span></div>
+        </div>
+        <div class="stat">
+          <div class="label">Progreso</div>
+          <div class="value" id="percent">0.00%</div>
+        </div>
+        <div class="stat">
+          <div class="label" id="etaLabel">Tiempo restante</div>
+          <div class="value" id="eta">—</div>
+        </div>
+      </section>
 
-	// Function to get the correct month abbreviation
-    function getShortMonth(date) {
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "June",
-                            "July", "Aug", "Sept", "Oct", "Nov", "Dec"];
-        return monthNames[date.getMonth()];
+      <section class="plan" aria-labelledby="planLabel">
+        <label id="planLabel" class="plan-label" for="planText">Plan de hoy:</label>
+        <div class="row">
+          <textarea id="planText" class="input" rows="3" placeholder="Escribe tu plan para hoy..."></textarea>
+          <button id="savePlan" type="button" class="btn" aria-live="polite">Guardar</button>
+        </div>
+        <div class="hint" id="planHint">Quedará bloqueado al guardar (también tras recargar).</div>
+      </section>
+
+      <section class="eod" aria-labelledby="eodLabel">
+        <div class="eod-head">
+          <label id="eodLabel" class="eod-label" for="notesText">Notas del día</label>
+          <label class="switch-label" for="followedSwitch">¿Se ha seguido el plan?
+            <span class="switch-wrap">
+              <input id="followedSwitch" class="switch-input" type="checkbox" disabled>
+              <span class="switch" aria-hidden="true"></span>
+            </span>
+          </label>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <textarea id="notesText" class="input" rows="3" placeholder="Escribe tus notas del día..." readonly></textarea>
+          <button id="saveEOD" type="button" class="btn" disabled>Guardar</button>
+        </div>
+        <div class="hint" id="eodHint">Se habilitará al cerrar el mercado (22:00). Tras guardar, quedará bloqueado.</div>
+      </section>
+
+      <footer>
+        Configurado para hoy de <strong>15:30</strong> a <strong>22:00</strong> (hora local).
+      </footer>
+    </section>
+
+    <!-- Vista VIDEOS -->
+    <section id="view-videos" class="view" role="tabpanel" aria-labelledby="tabBtnVideos">
+      <div class="videos-head">
+        <h2 class="videos-title">Videos de Market Insights</h2>
+        <input type="date" id="date-picker" aria-label="Selecciona una fecha" />
+      </div>
+
+      <div class="videos-grid" aria-label="Listado de videos">
+        <video controls id="v1"><source type="video/mp4"></video>
+        <video controls id="v2"><source type="video/mp4"></video>
+        <video controls id="v3"><source type="video/mp4"></video>
+        <video controls id="v4"><source type="video/mp4"></video>
+        <video controls id="v5"><source type="video/mp4"></video>
+        <video controls id="v6"><source type="video/mp4"></video>
+        <video controls id="v7"><source type="video/mp4"></video>
+      </div>
+
+      <h2 class="videos-title" style="margin-top:16px;">Revisión del día</h2>
+      <video controls id="v8"><source type="video/mp4"></video>
+    </section>
+
+    <!-- Vista HISTÓRICO -->
+    <section id="view-history" class="view" role="tabpanel" aria-labelledby="tabBtnHistory">
+      <div class="hist-head">
+        <h2 class="hist-title">Histórico de planes y notas</h2>
+        <div class="history-controls">
+          <label>Desde <input type="date" id="histStart"></label>
+          <label>Hasta <input type="date" id="histEnd"></label>
+          <input type="search" id="histSearch" placeholder="Buscar en plan/notas" class="auth-input" style="width:260px;" />
+          <button id="applyFilters" class="btn" type="button">Filtrar</button>
+          <button id="clearFilters" class="btn" type="button">Limpiar</button>
+          <button id="exportCSV" class="btn" type="button">Exportar CSV</button>
+          <button id="refreshHistory" class="btn" type="button" title="Recargar">Recargar</button>
+        </div>
+      </div>
+      <table class="table" aria-describedby="histDesc">
+        <caption id="histDesc" class="visually-hidden" style="position:absolute;left:-9999px;">Tabla de registros diarios</caption>
+        <thead>
+          <tr>
+            <th class="nowrap">Fecha</th>
+            <th>Plan</th>
+            <th class="nowrap">¿Se siguió?</th>
+            <th>Notas</th>
+          </tr>
+        </thead>
+        <tbody id="historyTbody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+  <script>
+    // ====== CONFIGURACIÓN (ajusta según despliegue) ======
+    // BACKEND: 'firebase' para multi-dispositivo real (recomendado) o 'local' (IndexedDB/LocalStorage sólo en el navegador actual)
+    const BACKEND = 'firebase';
+
+    // Si usas BACKEND === 'firebase', rellena FIREBASE_CONFIG con tus claves (las de cliente; ok en público) y coloca reglas de seguridad en Firestore.
+    const FIREBASE_CONFIG = {
+      apiKey: 'AIzaSyCY_wXApPrRATK_YkQq1vPsnjRjFRUo0kw',
+      authDomain: 'mathematicas-74eac.firebaseapp.com',
+      projectId: 'mathematicas-74eac',
+      storageBucket: 'mathematicas-74eac.firebasestorage.app',
+      messagingSenderId: '433650106984',
+      appId: '1:433650106984:web:05d2ec57e17de34db7f1dd',
+      measurementId: 'G-H7KFK1FKJ9'
+    };
+
+    // Si usas BACKEND === 'local' y aun así quieres proteger el acceso en GitHub Pages, puedes usar un **passcode** (protección básica, NO es seguridad real).
+    // Cambia PASS_HASH por el hash SHA-256 en hex de tu contraseña elegida.
+    // Hash de la contraseña por defecto 'demo123' -> d60e0d7f8e1bda09a09f2b8a1e2982a0b8d6a13a8a2a9b6f2aa0a0f0d9a8d6a6 (ejemplo, cámbialo)
+    const AUTH_MODE = BACKEND === 'firebase' ? 'firebase' : 'passcode';
+    // Control de registro de usuarios (signup) y dominio permitido (opcional)
+    const ALLOW_SIGN_UP = false; // pon true si quieres permitir crear cuentas desde la UI
+    const ALLOWED_EMAIL_DOMAIN = ''; // ej. 'midominio.com' para restringir altas y accesos por dominio (solo signup se valida aquí).
+    const PASS_HASH = 'd60e0d7f8e1bda09a09f2b8a1e2982a0b8d6a13a8a2a9b6f2aa0a0f0d9a8d6a6'; // <-- cámbialo
+
+    // Sesión
+    const SESSION_KEY = 'marketPanel_authOK';
+
+    // Mercado horario
+    const OPEN = { h: 15, m: 30 };
+    const CLOSE = { h: 22, m: 0 };
+
+    // ====== UTILIDADES ======
+    const pad2 = n => String(n).padStart(2, '0');
+    const fmtPercent = v => v.toFixed(2) + '%';
+    const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; };
+    function fmtHMS(ms) { if (!Number.isFinite(ms) || ms < 0) ms = 0; const s = Math.floor(ms/1000); const hh = Math.floor(s/3600), mm = Math.floor((s%3600)/60), ss = s%60; return `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`; }
+    function sessionTimes(baseDate = new Date()) { const d = new Date(baseDate); const open = new Date(d.getFullYear(), d.getMonth(), d.getDate(), OPEN.h, OPEN.m, 0, 0); const close = new Date(d.getFullYear(), d.getMonth(), d.getDate(), CLOSE.h, CLOSE.m, 0, 0); return { open, close }; }
+    function marketClosed(now = new Date()) { const { close } = sessionTimes(now); return now >= close; }
+
+    // Hash util (passcode)
+    async function sha256Hex(str) {
+      const enc = new TextEncoder().encode(str);
+      const buf = await crypto.subtle.digest('SHA-256', enc);
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
     }
 
-    // Update the updateVideoSources function
-    function updateVideoSources(yearMonthDate, shortMonth, year, formattedDay) {
-        const videos = [
-            { video: video1, hourMinute: '1058' },
-            { video: video2, hourMinute: '1059' },
-            { video: video3, hourMinute: '1100' },
-            { video: video4, hourMinute: '1101' },
-            { video: video5, hourMinute: '1102' },
-            { video: video6, hourMinute: '1103' },
-            { video: video7, hourMinute: '1104' }
-        ];
+    // ====== AUTH ======
+    function showApp() {
+      const app = document.getElementById('appRoot');
+      const gate = document.getElementById('authGate');
+      if (app) app.style.display = 'block';
+      if (gate) {
+        gate.hidden = true;
+        gate.style.display = 'none';
+        gate.setAttribute('aria-hidden', 'true');
+      }
+    }
+    function showGate() {
+      const app = document.getElementById('appRoot');
+      const gate = document.getElementById('authGate');
+      if (app) app.style.display = 'none';
+      if (gate) {
+        gate.hidden = false;
+        gate.style.display = 'grid';
+        gate.removeAttribute('aria-hidden');
+      }
+    }
+            else { showGate(); }
+          });
 
-        videos.forEach(({ video, hourMinute }) => {
-            const src = `https://traderfl.s3.amazonaws.com/${yearMonthDate}${hourMinute}MarketInsights.mp4`;
-            video.src = src;
-            video.style.display = 'block';
+          const btnSignIn = document.getElementById('btnSignIn');
+          if (btnSignIn) {
+            btnSignIn.addEventListener('click', async () => {
+              msg.textContent = '...';
+              try {
+                const email = document.getElementById('authEmail').value;
+                const pass = document.getElementById('authPassword').value;
+                await auth.signInWithEmailAndPassword(email, pass);
+                msg.textContent = '';
+              } catch (e) { msg.textContent = e.message || 'Error al iniciar sesión'; }
+            });
+          }
+
+          const btnSignUp = document.getElementById('btnSignUp');
+          if (!ALLOW_SIGN_UP) {
+            if (btnSignUp) btnSignUp.style.display = 'none';
+          } else if (btnSignUp) {
+            btnSignUp.addEventListener('click', async () => {
+              msg.textContent = '...';
+              try {
+                const email = document.getElementById('authEmail').value;
+                const pass = document.getElementById('authPassword').value;
+                if (ALLOWED_EMAIL_DOMAIN && !email.endsWith('@' + ALLOWED_EMAIL_DOMAIN)) {
+                  msg.textContent = `Solo se permiten registros @${ALLOWED_EMAIL_DOMAIN}`;
+                  return;
+                }
+                await auth.createUserWithEmailAndPassword(email, pass);
+                msg.textContent = '';
+              } catch (e) { msg.textContent = e.message || 'Error al crear cuenta'; }
+            });
+          }
+        } catch (e) {
+          console.warn('Fallo inicializando Firebase, usando passcode', e);
+          // fallback a passcode
+          initPasscodeAuth();
+        }
+      } else {
+        // Passcode simple
+        initPasscodeAuth();
+      }
+
+      function initPasscodeAuth() {
+        fbView.hidden = true; passView.hidden = false; gate.hidden = false;
+        const saved = sessionStorage.getItem(SESSION_KEY);
+        if (saved === 'ok') { showApp(); return; }
+        const btn = document.getElementById('btnCodeEnter');
+        if (btn) {
+          btn.addEventListener('click', async () => {
+            msg.textContent = '...';
+            try {
+              const code = document.getElementById('authCode').value || '';
+              const hash = await sha256Hex(code);
+              if (hash === PASS_HASH) { sessionStorage.setItem(SESSION_KEY, 'ok'); showApp(); msg.textContent=''; }
+              else { msg.textContent = 'Contraseña incorrecta'; }
+            } catch (e) { msg.textContent = 'Error de autenticación'; }
+          });
+        }
+      }
+    }
+
+    // ====== DATA LAYER ======
+    // Firestore (si está activo por auth) o IndexedDB/localStorage
+    const DB_NAME = 'marketPanelDB';
+    const DB_VERSION = 1; const STORE = 'dailyRecords';
+
+    function openIDB() { return new Promise((res, rej) => { if (!('indexedDB' in window)) return rej(new Error('No IDB')); const req = indexedDB.open(DB_NAME, DB_VERSION); req.onupgradeneeded = (ev) => { const db = ev.target.result; if (!db.objectStoreNames.contains(STORE)) { const os = db.createObjectStore(STORE, { keyPath: 'date' }); os.createIndex('by_date','date',{unique:true}); } }; req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); }); }
+
+    async function withStore(mode, fn) { try { const db = await openIDB(); return await new Promise((resolve, reject) => { const tx = db.transaction(STORE, mode); const store = tx.objectStore(STORE); const r = fn(store); tx.oncomplete = () => resolve(r); tx.onerror = () => reject(tx.error); }); } catch (e) { console.warn('[DB] fallback localStorage', e); return fn(null, true); } }
+
+    async function fsPath(date) { if (!window.__useFirestore) return null; return window.__fsdb.collection('users').doc(window.__uid).collection('records').doc(date); }
+
+    async function getRecord(date) {
+      if (window.__useFirestore) {
+        const docRef = await fsPath(date); const snap = await docRef.get(); return snap.exists ? snap.data() : null;
+      }
+      return withStore('readonly', (store, fb) => new Promise((resolve, reject) => {
+        if (fb) { try { const all = JSON.parse(localStorage.getItem('dailyRecords')||'{}'); resolve(all[date]||null); } catch { resolve(null); } return; }
+        const req = store.get(date); req.onsuccess = () => resolve(req.result||null); req.onerror = () => reject(req.error);
+      }));
+    }
+
+    async function putRecord(rec) {
+      if (window.__useFirestore) {
+        const docRef = await fsPath(rec.date); await docRef.set(rec, { merge: true }); return rec;
+      }
+      return withStore('readwrite', (store, fb) => new Promise((resolve, reject) => {
+        if (fb) { try { const all = JSON.parse(localStorage.getItem('dailyRecords')||'{}'); all[rec.date] = { ...(all[rec.date]||{}), ...rec }; localStorage.setItem('dailyRecords', JSON.stringify(all)); resolve(rec); } catch (e) { reject(e); } return; }
+        const req = store.put(rec); req.onsuccess = () => resolve(rec); req.onerror = () => reject(req.error);
+      }));
+    }
+
+    async function getAllRecords() {
+      if (window.__useFirestore) {
+        const qs = await window.__fsdb.collection('users').doc(window.__uid).collection('records').orderBy('date','desc').get();
+        return qs.docs.map(d => d.data());
+      }
+      return withStore('readonly', (store, fb) => new Promise((resolve, reject) => {
+        if (fb) { try { const all = JSON.parse(localStorage.getItem('dailyRecords')||'{}'); const arr = Object.values(all).sort((a,b)=>a.date<b.date?1:-1); resolve(arr); } catch(e){ resolve([]); } return; }
+        const out=[]; const req = store.openCursor(null,'prev'); req.onsuccess = ev => { const c = ev.target.result; if (c) { out.push(c.value); c.continue(); } else resolve(out); }; req.onerror = () => reject(req.error);
+      }));
+    }
+
+    // ====== UI FUNCIONES ======
+    function buildTicks(open, close) {
+      const ticks = document.getElementById('ticks'); ticks.innerHTML='';
+      const total = close-open; const startHour = open.getHours() + (open.getMinutes()>0?1:0);
+      for (let h = startHour; h <= close.getHours(); h++) { const t = new Date(open); t.setHours(h,0,0,0); if (t<=open || t>=close) continue; const pct = ((t-open)/total)*100; const tick = document.createElement('div'); tick.className='tick'; tick.style.left = pct+'%'; const lbl = document.createElement('div'); lbl.className='tick-label'; lbl.textContent = `${pad2(h)}:00`; lbl.style.left=pct+'%'; ticks.appendChild(tick); ticks.appendChild(lbl);} 
+      const leftLbl = document.createElement('div'); leftLbl.className='tick-label'; leftLbl.style.left='0%'; leftLbl.textContent = `${pad2(OPEN.h)}:${pad2(OPEN.m)}`; const rightLbl = document.createElement('div'); rightLbl.className='tick-label'; rightLbl.style.left='100%'; rightLbl.textContent = `${pad2(CLOSE.h)}:${pad2(CLOSE.m)}`; ticks.appendChild(leftLbl); ticks.appendChild(rightLbl);
+    }
+
+    function update() {
+      const now = new Date(); const { open, close } = sessionTimes(now); const total = close-open;
+      const fill = document.getElementById('fill'); const cursor = document.getElementById('cursor'); const percentEl = document.getElementById('percent'); const stateBadge = document.getElementById('stateBadge'); const eta = document.getElementById('eta'); const etaLabel = document.getElementById('etaLabel');
+      let pct, stateClass, stateText, etaMs, etaText;
+      if (now < open) { pct=0; stateText='Mercado cerrado (preapertura)'; stateClass='badge pre'; etaMs=open-now; etaText='Abre en '+fmtHMS(etaMs); }
+      else if (now >= close) { pct=100; stateText='Mercado cerrado'; stateClass='badge closed'; etaText='Fin del día'; }
+      else { pct=((now-open)/total)*100; stateText='Mercado abierto'; stateClass='badge open'; etaMs=close-now; etaText=fmtHMS(etaMs); }
+      pct = Math.max(0, Math.min(100, pct));
+      fill.style.width = pct+'%'; cursor.style.left = pct+'%'; percentEl.textContent = fmtPercent(pct); stateBadge.className = stateClass; stateBadge.textContent = stateText; eta.textContent = etaText; etaLabel.textContent = (now >= open && now < close) ? 'Tiempo restante' : (now < open ? 'Cuenta atrás' : 'Estado');
+      maybeEnableEOD(now);
+      document.title = `${fmtPercent(pct)} • Progreso mercado`;
+    }
+
+    function lockPlanUI() {
+      const ta = document.getElementById('planText'); const btn = document.getElementById('savePlan'); const hint = document.getElementById('planHint');
+      ta.setAttribute('readonly','readonly'); ta.classList.add('readonly'); btn.disabled = true; btn.textContent = 'Guardado'; hint.textContent = 'Guardado. (Bloqueado)';
+    }
+
+    function initPlan() {
+      const ta = document.getElementById('planText'); const btn = document.getElementById('savePlan'); const hint = document.getElementById('planHint'); const date = todayISO();
+      getRecord(date).then(rec => { if (rec && (rec.planSavedAt || (rec.plan && rec.plan.length>0))) { ta.value = rec.plan || ''; lockPlanUI(); } else if (rec && rec.plan) { ta.value = rec.plan; } });
+      btn.addEventListener('click', async () => { const val = (document.getElementById('planText').value||'').trim(); const rec = (await getRecord(date)) || { date }; rec.plan = val; rec.planSavedAt = new Date().toISOString(); await putRecord(rec); lockPlanUI(); });
+    }
+
+    async function loadEODState() {
+      const date = todayISO(); const rec = await getRecord(date);
+      const notes = document.getElementById('notesText'); const sw = document.getElementById('followedSwitch'); const save = document.getElementById('saveEOD');
+      if (rec) { if (rec.eodNotes) notes.value = rec.eodNotes; if (typeof rec.followedPlan === 'boolean') sw.checked = rec.followedPlan; if (rec.eodSavedAt) { notes.setAttribute('readonly','readonly'); notes.classList.add('readonly'); sw.disabled = true; save.disabled = true; save.textContent = 'Guardado'; document.getElementById('eodHint').textContent = 'Notas guardadas.'; } }
+      maybeEnableEOD();
+    }
+
+    function maybeEnableEOD(now = new Date()) {
+      const notes = document.getElementById('notesText'); const sw = document.getElementById('followedSwitch'); const save = document.getElementById('saveEOD');
+      const closed = marketClosed(now); const alreadySaved = save.disabled && notes.hasAttribute('readonly') && sw.disabled;
+      if (closed && !alreadySaved) { notes.removeAttribute('readonly'); notes.classList.remove('readonly'); sw.disabled = false; save.disabled = false; document.getElementById('eodHint').textContent = 'Mercado cerrado. Ya puedes completar y guardar.'; }
+    }
+
+    function initEOD() { document.getElementById('saveEOD').addEventListener('click', async () => { const date = todayISO(); const notes = document.getElementById('notesText'); const sw = document.getElementById('followedSwitch'); const rec = (await getRecord(date)) || { date }; rec.eodNotes = (notes.value||'').trim(); rec.followedPlan = !!sw.checked; rec.eodSavedAt = new Date().toISOString(); await putRecord(rec); notes.setAttribute('readonly','readonly'); notes.classList.add('readonly'); sw.disabled = true; const save = document.getElementById('saveEOD'); save.disabled = true; save.textContent='Guardado'; document.getElementById('eodHint').textContent='Notas guardadas.'; if (document.getElementById('view-history').classList.contains('active')) renderHistory(); }); }
+
+    // Tabs
+    function initTabs() {
+      const btnMarket = document.getElementById('tabBtnMarket'); const btnVideos = document.getElementById('tabBtnVideos'); const btnHistory = document.getElementById('tabBtnHistory');
+      const viewMarket = document.getElementById('view-market'); const viewVideos = document.getElementById('view-videos'); const viewHistory = document.getElementById('view-history');
+      if (!btnMarket || !btnVideos || !btnHistory) { console.warn('[initTabs] faltan elementos'); return false; }
+      let videosInit = false, historyInit = false;
+      function show(which) {
+        const isMarket = which==='market', isVideos = which==='videos', isHistory = which==='history';
+        viewMarket.classList.toggle('active', isMarket); viewVideos.classList.toggle('active', isVideos); viewHistory.classList.toggle('active', isHistory);
+        btnMarket.classList.toggle('active', isMarket); btnVideos.classList.toggle('active', isVideos); btnHistory.classList.toggle('active', isHistory);
+        btnMarket.setAttribute('aria-selected', String(isMarket)); btnVideos.setAttribute('aria-selected', String(isVideos)); btnHistory.setAttribute('aria-selected', String(isHistory));
+        if (isVideos && !videosInit) { initVideos(); videosInit = true; }
+        if (isHistory && !historyInit) { initHistory(); historyInit = true; }
+      }
+      btnMarket.addEventListener('click', () => show('market'));
+      btnVideos.addEventListener('click', () => show('videos'));
+      btnHistory.addEventListener('click', () => show('history'));
+      show('market');
+      return true;
+    }
+
+    // Videos
+    function initVideos() {
+      const ids = ['v1','v2','v3','v4','v5','v6','v7','v8']; const videos = ids.map(id => document.getElementById(id));
+      const datePicker = document.getElementById('date-picker'); if (!datePicker) return;
+      function addErrorEvent(v){ v.addEventListener('error', () => { v.style.display='none'; }); }
+      videos.forEach(v => v && addErrorEvent(v));
+      function getShortMonth(date){ const n=["Jan","Feb","Mar","Apr","May","June","July","Aug","Sept","Oct","Nov","Dec"]; return n[date.getMonth()]; }
+      function updateVideoSources(ymd, shortMonth, year, day){ const conf=[['v1','1058'],['v2','1059'],['v3','1100'],['v4','1101'],['v5','1102'],['v6','1103'],['v7','1104']]; conf.forEach(([id, hm])=>{ const el=document.getElementById(id); if(!el) return; el.src = `https://traderfl.s3.amazonaws.com/${ymd}${hm}MarketInsights.mp4`; el.style.display='block'; }); const v8=document.getElementById('v8'); if(v8){ v8.src=`https://traderfl.s3.amazonaws.com/EODReview${shortMonth}${day}${year}.mp4`; v8.style.display='block'; } }
+      function setByDate(d){ const y=d.getFullYear(); const m=d.getMonth()<9? '0'+(d.getMonth()+1) : (d.getMonth()+1); const dd=d.getDate()<10? '0'+d.getDate(): d.getDate(); const sm=getShortMonth(d); const ymd=`${y}${m}${dd}`; const dayStr=String(dd); const fd= dayStr.length===2 && dayStr.startsWith('0')? dayStr.slice(1): dayStr; updateVideoSources(ymd, sm, y, fd); }
+      const today = todayISO(); datePicker.value=today; datePicker.addEventListener('change',()=>{ const d=new Date(datePicker.value); if(!isNaN(d)) setByDate(d); }); if (window.flatpickr) { flatpickr('#date-picker',{dateFormat:'Y-m-d',defaultDate:new Date(), onChange:(ds)=>{ if(ds&&ds[0]) setByDate(ds[0]); }}); }
+      setByDate(new Date());
+    }
+
+    // Histórico + filtros
+    function renderHistoryRow(rec){ const tr=document.createElement('tr'); const planShort=(rec.plan||'').slice(0,160); const notesShort=(rec.eodNotes||'').slice(0,160); tr.innerHTML=`<td class="nowrap">${rec.date}</td><td>${planShort}${(rec.plan||'').length>160?'…':''}</td><td>${rec.followedPlan?'<span class="pill pill-yes">Sí</span>':'<span class="pill pill-no">No</span>'}</td><td>${notesShort}${(rec.eodNotes||'').length>160?'…':''}</td>`; return tr; }
+    async function renderHistory(applyFilters=true){ const tbody=document.getElementById('historyTbody'); tbody.innerHTML='<tr><td colspan="4">Cargando…</td></tr>'; let rows=await getAllRecords();
+      if (applyFilters) {
+        const s=document.getElementById('histStart').value; const e=document.getElementById('histEnd').value; const q=(document.getElementById('histSearch').value||'').toLowerCase().trim();
+        rows = rows.filter(r => {
+          const okStart = !s || r.date >= s; const okEnd = !e || r.date <= e; const text = ((r.plan||'')+'\n'+(r.eodNotes||'')).toLowerCase(); const okQ = !q || text.includes(q); return okStart && okEnd && okQ;
         });
-
-        const src8 = `https://traderfl.s3.amazonaws.com/EODReview${shortMonth}${formattedDay}${year}.mp4`;
-        video8.src = src8;
-        video8.style.display = 'block';
+      }
+      tbody.innerHTML=''; if (!rows.length) { tbody.innerHTML='<tr><td colspan="4">Sin datos para los filtros actuales.</td></tr>'; return; }
+      rows.forEach(r => tbody.appendChild(renderHistoryRow(r)));
     }
+    function initHistory(){ document.getElementById('refreshHistory').addEventListener('click', ()=>renderHistory(true)); document.getElementById('exportCSV').addEventListener('click', async ()=>{ const rows=await getAllRecords(); const headers=['date','plan','followedPlan','eodNotes','planSavedAt','eodSavedAt']; const csv=[headers.join(',')].concat(rows.map(r=>headers.map(h=>{ const v=r[h]; const s=(v==null?'':String(v)); return '"'+s.replace(/"/g,'""')+'"'; }).join(','))).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='historico.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),1000); });
+      document.getElementById('applyFilters').addEventListener('click', ()=>renderHistory(true)); document.getElementById('clearFilters').addEventListener('click', ()=>{ document.getElementById('histStart').value=''; document.getElementById('histEnd').value=''; document.getElementById('histSearch').value=''; renderHistory(true); }); renderHistory(true); }
 
-    // Update the event listener for the date picker
-    datePicker.addEventListener('change', () => {
-        const selectedDate = datePicker.value;
-        const date = new Date(selectedDate);
+    // Self-tests
+    function runSelfTests(){ console.groupCollapsed('%cSelf-tests','background:#e5e7eb;color:#111;padding:2px 6px;border-radius:6px'); const ids=['appRoot','authGate','tabBtnMarket','tabBtnVideos','tabBtnHistory','view-market','view-videos','view-history','fill','cursor','ticks','stateBadge','percent','eta','etaLabel','planText','savePlan','notesText','followedSwitch','saveEOD','v1','v2','v3','v4','v5','v6','v7','v8','date-picker','historyTbody','exportCSV','refreshHistory','histStart','histEnd','histSearch','applyFilters','clearFilters']; ids.forEach(id=>console.assert(!!document.getElementById(id), `#${id} debería existir`)); console.groupEnd(); }
 
-        const year = date.getFullYear();
-        const month = date.getMonth() < 9 ? '0' + (date.getMonth() + 1) : date.getMonth() + 1;
-        const day = date.getDate() < 10 ? '0' + (date.getDate()) : date.getDate();
-        const shortMonth = getShortMonth(date);
-        const yearMonthDate = `${year}${month}${day}`;
+    // Init
+    (function init(){ if (document.readyState==='loading'){ document.addEventListener('DOMContentLoaded', init); return; }
+      // Auth first
+      initAuth();
 
-        const formattedDay = day < 10 ? day.substring(1) : day;
-
-        updateVideoSources(yearMonthDate, shortMonth, year, formattedDay);
-    });
-
-    // Initialize videos with current date
-    const initialDate = new Date();
-    const initialYear = initialDate.getFullYear();
-    const initialMonth = initialDate.getMonth() < 9 ? '0' + (initialDate.getMonth() + 1) : initialDate.getMonth() + 1;
-    const initialDay = initialDate.getDate() < 10 ? '0' + (initialDate.getDate()) : initialDate.getDate();
-    const initialShortMonth = getShortMonth(initialDate);
-    const initialYearMonthDate = `${initialYear}${initialMonth}${initialDay}`;
-    const formattedInitialDay = initialDay < 10 ? initialDay.substring(1) : initialDay;
-
-    updateVideoSources(initialYearMonthDate, initialShortMonth, initialYear, formattedInitialDay);
-
-</script>
-
-</body>
-</html>
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'local'; const meta = document.getElementById('meta'); if (meta) meta.textContent = `Zona horaria: ${tz}`;
+      const { open, close } = sessionTimes(); buildTicks(open, close); update(); setInterval(update, 1000);
+      setInterval(()=>{ const now = new Date(); if (now.getHours()===0 && now.getMinutes()===0 && now.getSeconds()<2){ const { open:o2, close:c2 }=sessionTimes(); buildTicks(o2,c2); } },1000);
+      initPlan(); initEOD(); loadEODState(); const tabsOk = initTabs(); runSelfTests(); if (!tabsOk) console.warn('Tabs no inicializadas.');
